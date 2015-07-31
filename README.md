@@ -1,0 +1,4 @@
+BitcoinClient
+=============
+
+** TODO: Add description **

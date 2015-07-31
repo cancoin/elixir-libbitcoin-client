@@ -1,0 +1,9 @@
+%{"asn1ex": {:git, "git://github.com/vicentfg/asn1ex.git", "9165071e6f1f444a2bd94ca8d02c9789c0d772f4", []},
+  "base58check": {:git, "git://github.com/gjaldon/base58check.git", "1006aa4b2acf51ddd99f71997ba6baf44fcdb7c3", []},
+  "bitcoin": {:git, "/data/bitcoin/bitcoin", "e2973825c7dcbd75743be457070eee8122b1a06d", []},
+  "cure": {:hex, :cure, "0.4.0"},
+  "czmq": {:git, "/data/erlang-czmq", "f6d6a3804d5ba4a798b91c16d384463079d61f2c", []},
+  "erlsha2": {:git, "git://github.com/vinoski/erlsha2.git", "e3434b33cfeea02609bbf877954d856d895b9e1d", []},
+  "erlzmq": {:git, "/data/erlzmq2", "be8119254d13500bd01ca2d90637888187299393", []},
+  "erlzmq2": {:git, "git://github.com/zeromq/erlzmq2.git", "be8119254d13500bd01ca2d90637888187299393", []},
+  "hexate": {:hex, :hexate, "0.5.1"}}

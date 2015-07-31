@@ -1,0 +1,2 @@
+defmodule BitcoinClient do
+end
