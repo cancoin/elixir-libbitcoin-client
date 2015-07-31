@@ -129,15 +129,14 @@ defmodule Bitcoin.Client do
     {:ok, height}
   end
   defp decode_command("blockchain.fetch_block_header", <<0 :: little-integer-unsigned-size(32), header :: binary>> ) do
-    {:ok, Bitcoin.BlockHeader.parse!(header)}
+    {:ok, header}
   end
   defp decode_command("blockchain.fetch_block_transaction_hashes", <<0 :: little-integer-unsigned-size(32), hashes :: binary>> ) do
-    IO.inspect {:bh, hashes}
     {:ok, hashes}
   end
   defp decode_command(command, <<0 :: little-integer-unsigned-size(32), transaction :: binary>> )
     when command in ["blockchain.fetch_transaction", "transaction_pool.fetch_transaction"] do
-    {:ok, Bitcoin.Tx.parse!(transaction)}
+    {:ok, transaction}
   end
   defp decode_command("blockchain.fetch_transaction_index",
     <<0 :: little-integer-unsigned-size(32), height :: little-integer-unsigned-size(32), index :: little-integer-unsigned-size(32)>>) do

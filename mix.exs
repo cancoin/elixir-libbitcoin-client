@@ -28,8 +28,7 @@ defmodule BitcoinClient.Mixfile do
   # Type `mix help deps` for more examples and options
   defp deps do
     [
-      {:czmq, git: "/data/erlang-czmq"},
-      {:bitcoin, git: "/data/bitcoin/bitcoin"}
+      {:czmq, git: "/data/erlang-czmq"}
     ]
   end
 end
