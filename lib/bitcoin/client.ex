@@ -3,7 +3,7 @@ defmodule Bitcoin.Client do
 
   @max_uint32 4294967295
   @default_timeout 2000
-  @hz 1000
+  @hz 10
 
   defstruct [context: nil, socket: nil, requests: %{}, timeout: 1000]
 
