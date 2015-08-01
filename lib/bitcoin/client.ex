@@ -3,6 +3,7 @@ defmodule Bitcoin.Client do
 
   @max_uint32 4294967295
   @default_timeout 2000
+  @hz 1000
 
   defstruct [context: nil, socket: nil, requests: %{}, timeout: 1000]
 
@@ -77,11 +78,12 @@ defmodule Bitcoin.Client do
       {:error, error, %Client{requests: requests} = state} ->
         :ok = send_reply({:error, error}, command, request_id, owner)
         {:ok, requests} = clear_request(request_id, requests)
-        {:noreply, %Client{state | requests: requests}}
+        {:ok, state} = retry_receive_payload(%Client{state | requests: requests})
+        {:noreply, state}
     end
   end
 
-  def handle_cast(:receive_payload, state) do
+  def handle_info(:receive_payload, state) do
     case receive_payload(state) do
       {:ok, state} -> {:noreply, state}
     end
@@ -90,11 +92,8 @@ defmodule Bitcoin.Client do
   def handle_info({:timeout, request_id}, %Client{requests: requests} = state) do
     case Map.fetch(requests, request_id) do
       :error ->
-        IO.inspect requests
-        IO.inspect :notimeout
         {:noreply, state}
       {:ok, owner} when is_pid(owner) ->
-        IO.inspect :timeout
         send_reply({:error, :timeout}, nil, request_id, owner) 
         {:ok, requests} = clear_request(request_id, requests)
         {:noreply, %Client{state | requests: requests}}
@@ -157,7 +156,6 @@ defmodule Bitcoin.Client do
     decode_history2(history, [])
   end
   defp decode_command(any, reply) do
-    IO.inspect {:unknown_reply, any, reply}
     {:error, :unknown_reply}
   end
 
@@ -204,18 +202,13 @@ defmodule Bitcoin.Client do
   end
 
   defp receive_payload(%Client{socket: socket} = state) do
+    IO.inspect "r"
     case :czmq.zframe_recv_all(socket) do
       {:ok, reply} ->
-        IO.inspect {:got, reply}
         handle_reply(reply, state)
       :error ->
-        retry_receive_payload
-        {:ok, state}
+        retry_receive_payload(state)
     end
-  end
-
-  def retry_receive_payload do
-    :gen_server.cast(self, :receive_payload)
   end
 
   def add_request(request_id, owner, %Client{requests: requests} = state) do
@@ -224,8 +217,6 @@ defmodule Bitcoin.Client do
 
   def clear_request(request_id, requests) do
     new_requests = Map.delete(requests, request_id)
-    IO.inspect Map.size(new_requests)
-    if Map.size(new_requests) == 0, do: :ok = retry_receive_payload
     {:ok, new_requests}
   end
 
@@ -238,6 +229,14 @@ defmodule Bitcoin.Client do
       :error ->
         {:error, :not_found}
     end
+  end
+
+  def retry_receive_payload(%Client{requests: []} = state) do
+    {:ok, state}
+  end
+  def retry_receive_payload(state) do
+    :erlang.send_after(@hz, self, :receive_payload)
+    {:ok, state}
   end
 
   def schedule_timeout(request_id, timeout) do
