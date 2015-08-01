@@ -257,7 +257,7 @@ defmodule Bitcoin.Client do
 
   defp dncode_int(<<int :: little-integer-unsigned-size(32)>>), do: int
 
-  defp encode_hash(hash), do: String.reverse(hash)
+  defp encode_hash(hash), do: <<String.reverse(hash) :: binary-size(32)>>
 
   defp decode_hash(hash), do: Base.encode16(String.reverse(hash), case: :lower)
 
