@@ -12,7 +12,7 @@ defmodule Bitcoin.Client do
   end
 
   def block_height(client, block_hash, owner \\ self) do
-    cast(client, "blockchain.fetch_block_height", block_hash, owner)
+    cast(client, "blockchain.fetch_block_height", encode_hash(block_hash), owner)
   end
 
   def block_header(client, height, owner \\ self) when is_integer(height) do
@@ -255,10 +255,16 @@ defmodule Bitcoin.Client do
 
   defp encode_int(int), do: <<int :: little-integer-unsigned-size(32)>>
 
-  defp dncode_int(<<int :: little-integer-unsigned-size(32)>>), do: int
+  defp decode_int(<<int :: little-integer-unsigned-size(32)>>), do: int
 
-  defp encode_hash(hash), do: <<String.reverse(hash) :: binary-size(32)>>
-
+  defp encode_hash(hash) do
+    encode_hash(hash, <<>>)
+  end
+  defp encode_hash(<<>>, acc), do: acc
+  defp encode_hash(<<h :: binary-size(1), rest :: binary>>, acc) do
+    encode_hash(rest, <<h :: binary, acc :: binary>>)
+  end
+  
   defp decode_hash(hash), do: Base.encode16(String.reverse(hash), case: :lower)
 
 end
