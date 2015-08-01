@@ -19,8 +19,8 @@ defmodule Bitcoin.Client do
     cast(client, "blockchain.fetch_block_header", encode_int(height))
   end
 
-  def block_transaction_hashes(client, height, owner \\ self) when is_integer(height) do
-    cast(client, "blockchain.fetch_block_transaction_hashes", encode_int(height))
+  def block_transaction_hashes(client, hash, owner \\ self) when is_integer(hash) do
+    cast(client, "blockchain.fetch_block_transaction_hashes", encode_hash(hash))
   end
 
   def blockchain_transaction(client, txid, owner \\ self) do
