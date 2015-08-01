@@ -12,7 +12,7 @@ defmodule Bitcoin.Client do
   end
 
   def block_height(client, block_hash, owner \\ self) do
-    cast(client, "blockchain.fetch_block_height", encode_hash(block_hash), owner)
+    cast(client, "blockchain.fetch_block_height", block_hash, owner)
   end
 
   def block_header(client, height, owner \\ self) when is_integer(height) do
