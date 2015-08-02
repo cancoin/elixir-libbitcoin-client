@@ -255,7 +255,7 @@ defmodule Bitcoin.Client do
     send(owner, {:bitcoin_client_error, command, request_id, reason})
   end
 
-  defp new_request_id, do: :random.uniform(@max_uint32)
+  defp new_request_id, do: :erlang.unique_integer([:positive])
 
   defp encode_int(int), do: <<int :: little-integer-unsigned-size(32)>>
 
