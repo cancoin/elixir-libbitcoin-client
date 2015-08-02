@@ -40,18 +40,18 @@ defmodule Bitcoin.Client do
   end
 
   def address_history(client, address, height \\ 0,  owner \\ self) do
-    {prefix, decoded} = Base58Check.decode58check(address)
-    cast(client, "address.fetch_history", prefix <> decoded <> encode_int(height), owner)
+    {prefix, decoded} = decode_base58check(address)
+    cast(client, "address.fetch_history", <<prefix :: binary-size(1), encode_hash(decoded) :: binary-size(20), encode_int(height) :: binary>>, owner)
   end
 
   def address_history2(client, address, height \\ 0,  owner \\ self) do
-    {prefix, decoded} = Base58Check.decode58check(address)
-    cast(client, "address.fetch_history2", prefix <> decoded <> encode_int(height), owner)
+    {prefix, decoded} = decode_base58check(address)
+    cast(client, "address.fetch_history2",<<prefix :: binary-size(1), decoded :: binary-size(20), encode_int(height) :: binary>>, owner)
   end
 
   def blockchain_history(client, address, height \\ 0,  owner \\ self) do
-    {prefix, decoded} = Base58Check.decode58check(address)
-    cast(client, "blockchain.fetch_history", prefix <> decoded <> encode_int(height), owner)
+    {prefix, decoded} = decode_base58check(address)
+    cast(client, "blockchain.fetch_history", <<prefix :: binary-size(1), decoded :: binary-size(20), encode_int(height) :: binary>>, owner)
   end
 
   def start_link(uri, timeout \\ @default_timeout) do
@@ -140,6 +140,10 @@ defmodule Bitcoin.Client do
   defp decode_command("blockchain.fetch_transaction_index",
     <<0 :: little-integer-unsigned-size(32), height :: little-integer-unsigned-size(32), index :: little-integer-unsigned-size(32)>>) do
     {:ok, {height, index}}
+  end
+  defp decode_command("blockchain.fetch_spend",
+    <<5 :: little-integer-unsigned-size(32), _ :: binary>>) do
+    {:error, :unspent}
   end
   defp decode_command("blockchain.fetch_spend",
     <<0 :: little-integer-unsigned-size(32), txid :: binary-size(32), index :: little-integer-unsigned-size(32)>>) do
@@ -267,4 +271,11 @@ defmodule Bitcoin.Client do
   
   defp decode_hash(hash), do: Base.encode16(String.reverse(hash), case: :lower)
 
+  def decode_base58check(address) do
+    <<version::binary-size(1), pkh::binary-size(20), checksum::binary-size(4)>> = :base58.base58_to_binary(to_char_list(address))
+    case  :crypto.hash(:sha256, :crypto.hash(:sha256, version <> pkh)) do
+      <<^checksum :: binary-size(4), _ :: binary>> -> {version, (pkh)}
+      _ -> {:error, :invalid_checksum}
+    end
+  end
 end
