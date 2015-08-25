@@ -42,9 +42,6 @@ defmodule Bitcoin.Client.Sub do
   end
 
   def init([endpoint, uri]) do
-  #  endpoint = :radar
-  #  {:ok, p} = Bitcoin.Client.Sub.radar 'tcp://45.32.235.141:7678'
-
     {:ok, ctx} = :czmq.start_link
     socket = :czmq.zsocket_new ctx, :sub
     :ok = :czmq.zsocket_connect socket, uri
@@ -74,38 +71,31 @@ defmodule Bitcoin.Client.Sub do
     {:noreply, state}
   end
 
-  def handle_info({:zmq, ctx, <<heart :: little-unsigned-integer-size(32) >>, _extra},
-    %State{endpoint: :heartbeat} = state) do
+  def handle_info({:zmq, ctx, <<heart :: little-unsigned-integer-size(32) >>, _extra}, %State{endpoint: :heartbeat} = state) do
     IO.inspect {:heart, heart}
     {:noreply, state}
   end
-  def handle_info({:zmq, payload, _extra},
-    %State{endpoint: :block, context: ctx} = state) do
-
+  def handle_info({:zmq, payload, _extra}, %State{endpoint: :block, context: ctx} = state) do
     IO.inspect {:block, payload}
     {:noreply, state}
   end
-  def handle_info({:zmq, payload, _extra},
-    %State{endpoint: :transaction, context: ctx} = state) do
+  def handle_info({:zmq, payload, _extra}, %State{endpoint: :transaction, context: ctx} = state) do
     IO.inspect {:transaction, payload}
     {:noreply, state}
   end
   def handle_info({socket, _msg}, %State{socket: socket, controlling_process: nil} = state) do
-    # st
     {:noreply, state}
   end
   def handle_info({socket, [<<node_id :: little-integer-unsigned-size(32)>>,
     <<1 ::  little-integer-unsigned-size(32)>>, <<hash :: binary-size(32)>>] = payload},
     %State{endpoint: :radar, socket: socket} = state) do
-      #    IO.inspect "#{node_id} #{Base.encode16(String.reverse(hash), case: :lower)}"
-    {:ok, state} = send_to_controller {:radar, :tx, hash}, state
+    {:ok, state} = send_to_controller {:radar, :tx, node_id, String.reverse(hash)}, state
     {:noreply, state}
   end
   def handle_info({socket, [<<node_id :: little-integer-unsigned-size(32)>>,
     <<2 ::  little-integer-unsigned-size(32)>>, <<hash :: binary>>] = payload},
     %State{endpoint: :radar, socket: socket} = state) do
-      #    IO.inspect "#{node_id} #{Base.encode16(String.reverse(hash), case: :lower)}"
-    {:ok, state} = send_to_controller {:radar, :block, hash}, state
+    {:ok, state} = send_to_controller {:radar, :block, node_id, String.reverse(hash)}, state
     {:noreply, state}
   end
 

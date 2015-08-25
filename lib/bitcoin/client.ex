@@ -94,7 +94,7 @@ defmodule Bitcoin.Client do
       :error ->
         {:noreply, state}
       {:ok, owner} when is_pid(owner) ->
-        send_reply({:error, :timeout}, nil, request_id, owner) 
+        send_reply({:error, :timeout}, nil, request_id, owner)
         {:ok, requests} = clear_request(request_id, requests)
         {:noreply, %Client{state | requests: requests}}
     end
