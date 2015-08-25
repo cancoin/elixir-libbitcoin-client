@@ -98,6 +98,9 @@ defmodule Bitcoin.Client.Sub do
     {:ok, state} = send_to_controller {:radar, :block, node_id, String.reverse(hash)}, state
     {:noreply, state}
   end
+  def handle_info(_any, state) do
+    {:noreply, state}
+  end
 
   def send_to_controller(message, %State{controlling_process: nil} = state), do: {:ok, state}
   def send_to_controller(message, %State{msg_state: :ready, controlling_process: {_ref, controlling_process}} = state) do
