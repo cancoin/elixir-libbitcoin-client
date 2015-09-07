@@ -12,7 +12,7 @@ defmodule Bitcoin.Client do
   end
 
   def block_height(client, block_hash, owner \\ self) do
-    cast(client, "blockchain.fetch_block_height", encode_hash(block_hash), owner)
+    cast(client, "blockchain.fetch_block_height", reverse_hash(block_hash), owner)
   end
 
   def block_header(client, height, owner \\ self) when is_integer(height) do
@@ -20,28 +20,28 @@ defmodule Bitcoin.Client do
   end
 
   def block_transaction_hashes(client, hash, owner \\ self) do
-    cast(client, "blockchain.fetch_block_transaction_hashes", encode_hash(hash))
+    cast(client, "blockchain.fetch_block_transaction_hashes", reverse_hash(hash))
   end
 
   def blockchain_transaction(client, txid, owner \\ self) do
-    cast(client, "blockchain.fetch_transaction", encode_hash(txid), owner)
+    cast(client, "blockchain.fetch_transaction", reverse_hash(txid), owner)
   end
 
   def pool_transaction(client, txid, owner \\ self) do
-    cast(client, "transaction_pool.fetch_transaction", encode_hash(txid), owner)
+    cast(client, "transaction_pool.fetch_transaction", reverse_hash(txid), owner)
   end
 
   def transaction_index(client, txid, owner \\ self) do
-    cast(client, "blockchain.fetch_transaction_index", encode_hash(txid), owner)
+    cast(client, "blockchain.fetch_transaction_index", reverse_hash(txid), owner)
   end
 
   def spend(client, txid, index, owner \\ self) do
-    cast(client, "blockchain.fetch_spend", encode_hash(txid) <> encode_int(index))
+    cast(client, "blockchain.fetch_spend", reverse_hash(txid) <> encode_int(index))
   end
 
   def address_history(client, address, height \\ 0,  owner \\ self) do
     {prefix, decoded} = decode_base58check(address)
-    cast(client, "address.fetch_history", <<prefix :: binary-size(1), encode_hash(decoded) :: binary-size(20), encode_int(height) :: binary>>, owner)
+    cast(client, "address.fetch_history", <<prefix :: binary-size(1), reverse_hash(decoded) :: binary-size(20), encode_int(height) :: binary>>, owner)
   end
 
   def address_history2(client, address, height \\ 0,  owner \\ self) do
@@ -144,7 +144,7 @@ defmodule Bitcoin.Client do
   end
   defp decode_command("blockchain.fetch_spend",
     <<0 :: little-integer-unsigned-size(32), txid :: binary-size(32), index :: little-integer-unsigned-size(32)>>) do
-    {:ok, {String.reverse(txid), index}}
+    {:ok, {reverse_hash(txid), index}}
   end
   defp decode_command("blockchain.fetch_history", <<0 :: little-integer-unsigned-size(32)>>) do
     {:ok, []}
@@ -173,8 +173,8 @@ defmodule Bitcoin.Client do
                         spend_height :: little-unsigned-integer-size(32),
                         rest :: binary>>, acc) do
 
-    row = %{output_hash: encode_hash(output_hash), output_index: output_index, output_height: output_height,
-            value: value, spend_hash: encode_hash(spend_hash), spend_index: spend_index, spend_height: spend_height}
+    row = %{output_hash: reverse_hash(output_hash), output_index: output_index, output_height: output_height,
+            value: value, spend_hash: reverse_hash(spend_hash), spend_index: spend_index, spend_height: spend_height}
     decode_history1(rest, [row|acc])
   end
 
@@ -186,7 +186,7 @@ defmodule Bitcoin.Client do
                          value :: little-unsigned-integer-size(64),
                          rest :: binary>>, acc) do
 
-    row = %{type: history_row_type(type), hash: encode_hash(hash), index: index, height: height, value: value}
+    row = %{type: history_row_type(type), hash: reverse_hash(hash), index: index, height: height, value: value}
     decode_history2(rest, [row|acc])
   end
 
@@ -259,15 +259,24 @@ defmodule Bitcoin.Client do
 
   defp decode_int(<<int :: little-integer-unsigned-size(32)>>), do: int
 
-  defp encode_hash(hash) do
-    encode_hash(hash, <<>>)
-  end
-  defp encode_hash(<<>>, acc), do: acc
-  defp encode_hash(<<h :: binary-size(1), rest :: binary>>, acc) do
-    encode_hash(rest, <<h :: binary, acc :: binary>>)
+
+
+  def fast_reverse_hash(hash) do
+    bitsize = size(hash) * 8
+    <<revhash :: integer-little-size(bitsize)>> = hash
+    <<revhash :: integer-big>>
   end
 
-  defp encode_hex(hash), do: Base.encode16(encode_hash(hash), case: :lower)
+  defp reverse_hash(hash) do
+    reverse_hash(hash, <<>>)
+  end
+
+  defp reverse_hash(<<>>, acc), do: acc
+  defp reverse_hash(<<h :: binary-size(1), rest :: binary>>, acc) do
+    reverse_hash(rest, <<h :: binary, acc :: binary>>)
+  end
+
+  defp encode_hex(hash), do: Base.encode16(reverse_hash(hash), case: :lower)
 
   def decode_base58check(address) do
     <<version::binary-size(1), pkh::binary-size(20), checksum::binary-size(4)>> = :base58.base58_to_binary(to_char_list(address))
