@@ -259,14 +259,6 @@ defmodule Bitcoin.Client do
 
   defp decode_int(<<int :: little-integer-unsigned-size(32)>>), do: int
 
-
-
-  def fast_reverse_hash(hash) do
-    bitsize = size(hash) * 8
-    <<revhash :: integer-little-size(bitsize)>> = hash
-    <<revhash :: integer-big>>
-  end
-
   defp reverse_hash(hash) do
     reverse_hash(hash, <<>>)
   end
