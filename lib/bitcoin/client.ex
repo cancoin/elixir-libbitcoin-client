@@ -120,9 +120,6 @@ defmodule Bitcoin.Client do
   defp decode_command(_command, <<3 :: little-integer-unsigned-size(32), _rest :: binary>>) do
     {:error, :not_found}
   end
-  defp decode_command(_command, <<error :: little-integer-unsigned-size(32), _rest :: binary>>) when error != 0 do
-    {:error, error}
-  end
   defp decode_command(command, <<0 :: little-integer-unsigned-size(32), height :: little-integer-unsigned-size(32)>> )
     when command in ["blockchain.fetch_last_height", "blockchain.fetch_block_height"] do
     {:ok, height}
@@ -159,6 +156,9 @@ defmodule Bitcoin.Client do
    when command in ["blockchain.fetch_history", "address.fetch_history2"] do
     decode_history2(history, [])
   end
+  defp decode_command(_command, <<error :: little-integer-unsigned-size(32), _rest :: binary>>) when error != 0 do
+    {:error, error}
+  end
   defp decode_command(any, reply) do
     {:error, :unknown_reply}
   end
@@ -173,8 +173,8 @@ defmodule Bitcoin.Client do
                         spend_height :: little-unsigned-integer-size(32),
                         rest :: binary>>, acc) do
 
-    row = %{output_hash: decode_hash(output_hash), output_index: output_index, output_height: output_height,
-            value: value, spend_hash: decode_hash(spend_hash), spend_index: spend_index, spend_height: spend_height}
+    row = %{output_hash: encode_hash(output_hash), output_index: output_index, output_height: output_height,
+            value: value, spend_hash: encode_hash(spend_hash), spend_index: spend_index, spend_height: spend_height}
     decode_history1(rest, [row|acc])
   end
 
@@ -186,7 +186,7 @@ defmodule Bitcoin.Client do
                          value :: little-unsigned-integer-size(64),
                          rest :: binary>>, acc) do
 
-    row = %{type: history_row_type(type), hash: decode_hash(hash), index: index, height: height, value: value}
+    row = %{type: history_row_type(type), hash: encode_hash(hash), index: index, height: height, value: value}
     decode_history2(rest, [row|acc])
   end
 
@@ -206,22 +206,12 @@ defmodule Bitcoin.Client do
   end
 
   defp receive_payload(%Client{socket: socket} = state) do
-    IO.inspect "r"
     case :czmq.zframe_recv_all(socket) do
       {:ok, reply} ->
         handle_reply(reply, state)
       :error ->
         retry_receive_payload(state)
     end
-  end
-
-  def add_request(request_id, owner, %Client{requests: requests} = state) do
-    {:ok, %Client{state | requests: Map.put(requests, request_id, owner)}}
-  end
-
-  def clear_request(request_id, requests) do
-    new_requests = Map.delete(requests, request_id)
-    {:ok, new_requests}
   end
 
   defp handle_reply([command, <<request_id :: integer-little-unsigned-size(32)>>, reply], %Client{requests: requests} = state) do
@@ -233,6 +223,14 @@ defmodule Bitcoin.Client do
       :error ->
         {:error, :not_found}
     end
+  end
+
+  def add_request(request_id, owner, %Client{requests: requests} = state) do
+    {:ok, %Client{state | requests: Map.put(requests, request_id, owner)}}
+  end
+
+  def clear_request(request_id, requests) do
+    {:ok,  Map.delete(requests, request_id)}
   end
 
   def retry_receive_payload(%Client{requests: []} = state) do
@@ -268,13 +266,13 @@ defmodule Bitcoin.Client do
   defp encode_hash(<<h :: binary-size(1), rest :: binary>>, acc) do
     encode_hash(rest, <<h :: binary, acc :: binary>>)
   end
-  
-  defp decode_hash(hash), do: Base.encode16(String.reverse(hash), case: :lower)
+
+  defp encode_hex(hash), do: Base.encode16(encode_hash(hash), case: :lower)
 
   def decode_base58check(address) do
     <<version::binary-size(1), pkh::binary-size(20), checksum::binary-size(4)>> = :base58.base58_to_binary(to_char_list(address))
     case  :crypto.hash(:sha256, :crypto.hash(:sha256, version <> pkh)) do
-      <<^checksum :: binary-size(4), _ :: binary>> -> {version, (pkh)}
+      <<^checksum :: binary-size(4), _ :: binary>> -> {version, pkh}
       _ -> {:error, :invalid_checksum}
     end
   end

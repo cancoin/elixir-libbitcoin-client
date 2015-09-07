@@ -83,9 +83,6 @@ defmodule Bitcoin.Client.Sub do
     IO.inspect {:transaction, payload}
     {:noreply, state}
   end
-  def handle_info({socket, _msg}, %State{socket: socket, controlling_process: nil} = state) do
-    {:noreply, state}
-  end
   def handle_info({socket, [<<node_id :: little-integer-unsigned-size(32)>>,
     <<1 ::  little-integer-unsigned-size(32)>>, <<hash :: binary-size(32)>>] = payload},
     %State{endpoint: :radar, socket: socket} = state) do
@@ -104,7 +101,7 @@ defmodule Bitcoin.Client.Sub do
 
   def send_to_controller(message, %State{controlling_process: nil} = state), do: {:ok, state}
   def send_to_controller(message, %State{msg_state: :ready, controlling_process: {_ref, controlling_process}} = state) do
-    ^message = send controlling_process, message
+    send controlling_process, message
     {:ok, %State{state| msg_state: :need_ack}}
   end
   def send_to_controller(message, %State{msg_state: :need_ack, queue: queue, controlling_process: {_ref, controlling_process}} = state) do
