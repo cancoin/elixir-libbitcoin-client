@@ -1,5 +1,5 @@
-defmodule Bitcoin.Client do
-  alias Bitcoin.Client
+defmodule Libbitcoin.Client do
+  alias Libbitcoin.Client
 
   @max_uint32 4294967295
   @default_timeout 2000
@@ -19,15 +19,10 @@ defmodule Bitcoin.Client do
     cast(client, "blockchain.fetch_block_header", encode_int(height))
   end
 
-  def block_transaction_hashes(client, height) do
-    block_transaction_hashes(client, height, self)
-  end
-
-  def block_transaction_hashes(client, height, owner) when is_integer(height) do
-    cast(client, "blockchain.fetch_block_transaction_hashes", encode_int(height))
-  end
-  def block_transaction_hashes(client, hash, owner) do
-    cast(client, "blockchain.fetch_block_transaction_hashes", reverse_hash(hash))
+  def block_transaction_hashes(client, hash, owner \\ self) when is_binary(hash) do
+    rev_hash = reverse_hash(hash)
+    IO.inspect {:hash, hash, rev_hash, byte_size(hash), byte_size(rev_hash)}
+    cast(client, "blockchain.fetch_block_transaction_hashes", hash)
   end
 
   def blockchain_transaction(client, txid, owner \\ self) do
@@ -156,10 +151,10 @@ defmodule Bitcoin.Client do
   defp decode_command("blockchain.fetch_history", <<0 :: little-integer-unsigned-size(32)>>) do
     {:ok, []}
   end
-  defp decode_command("address.fetch_history", <<code :: little-integer-size(32), history :: binary>>) do
+  defp decode_command("address.fetch_history", <<_code :: little-integer-size(32), history :: binary>>) do
     decode_history1(history, [])
   end
-  defp decode_command(command, <<code :: little-integer-size(32), history :: binary>>)
+  defp decode_command(command, <<_code :: little-integer-size(32), history :: binary>>)
    when command in ["blockchain.fetch_history", "address.fetch_history2"] do
     decode_history2(history, [])
   end
@@ -167,6 +162,7 @@ defmodule Bitcoin.Client do
     {:error, error}
   end
   defp decode_command(any, reply) do
+    IO.inspect {:unknown, any, reply}
     {:error, :unknown_reply}
   end
 
@@ -266,11 +262,14 @@ defmodule Bitcoin.Client do
 
   defp decode_int(<<int :: little-integer-unsigned-size(32)>>), do: int
 
-  defp reverse_hash(hash) do
+  defp reverse_hash(<<_ :: binary-size(32)>> = hash) do
     reverse_hash(hash, <<>>)
   end
 
-  defp reverse_hash(<<>>, acc), do: acc
+  defp reverse_hash(<<>>, acc) when byte_size(acc) == 32 do
+    IO.inspect {"eq 32", byte_size acc}
+    acc
+  end
   defp reverse_hash(<<h :: binary-size(1), rest :: binary>>, acc) do
     reverse_hash(rest, <<h :: binary, acc :: binary>>)
   end
