@@ -21,7 +21,6 @@ defmodule Libbitcoin.Client do
 
   def block_transaction_hashes(client, hash, owner \\ self) when is_binary(hash) do
     rev_hash = reverse_hash(hash)
-    IO.inspect {:hash, hash, rev_hash, byte_size(hash), byte_size(rev_hash)}
     cast(client, "blockchain.fetch_block_transaction_hashes", hash)
   end
 
@@ -103,7 +102,6 @@ defmodule Libbitcoin.Client do
   end
 
   def handle_info(evt, state) do
-    IO.inspect {:info, evt}
     {:noreply, state}
   end
 
@@ -162,7 +160,6 @@ defmodule Libbitcoin.Client do
     {:error, error}
   end
   defp decode_command(any, reply) do
-    IO.inspect {:unknown, any, reply}
     {:error, :unknown_reply}
   end
 
@@ -249,11 +246,11 @@ defmodule Libbitcoin.Client do
   end
 
   def send_reply({:ok, decoded}, command, request_id, owner) do
-    send(owner, {:bitcoin_client, command, request_id, decoded})
+    send(owner, {:libbitcoin_client, command, request_id, decoded})
   end
 
   def send_reply({:error, reason}, command, request_id, owner) do
-    send(owner, {:bitcoin_client_error, command, request_id, reason})
+    send(owner, {:libbitcoin_client_error, command, request_id, reason})
   end
 
   defp new_request_id, do: :erlang.unique_integer([:positive])
@@ -267,7 +264,6 @@ defmodule Libbitcoin.Client do
   end
 
   defp reverse_hash(<<>>, acc) when byte_size(acc) == 32 do
-    IO.inspect {"eq 32", byte_size acc}
     acc
   end
   defp reverse_hash(<<h :: binary-size(1), rest :: binary>>, acc) do

@@ -1,4 +1,4 @@
-BitcoinClient
+Libitcoin Client
 =============
 
 ** TODO: Add description **
