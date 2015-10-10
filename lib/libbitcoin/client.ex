@@ -259,11 +259,11 @@ defmodule Libbitcoin.Client do
 
   defp decode_int(<<int :: little-integer-unsigned-size(32)>>), do: int
 
-  defp reverse_hash(<<_ :: binary-size(32)>> = hash) do
+  defp reverse_hash(hash) do
     reverse_hash(hash, <<>>)
   end
 
-  defp reverse_hash(<<>>, acc) when byte_size(acc) == 32 do
+  defp reverse_hash(<<>>, acc) do
     acc
   end
   defp reverse_hash(<<h :: binary-size(1), rest :: binary>>, acc) do
