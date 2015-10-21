@@ -43,7 +43,7 @@ defmodule Libbitcoin.Client.Sub do
     socket = :czmq.zsocket_new ctx, :sub
     :ok = :czmq.zsocket_connect socket, uri
     :ok = :czmq.zsocket_set_subscribe socket, ''
-    {:ok, sub} = :czmq_submod.start_link socket, poll_interval: 100
+    {:ok, sub} = :czmq_poller.start_link socket, poll_interval: 100
     schedule_resubscribe!
     {:ok, %State{endpoint: endpoint, context: ctx, socket: socket, sub: sub}}
   end
@@ -64,11 +64,11 @@ defmodule Libbitcoin.Client.Sub do
         {:noreply, %State{state | queue: queue, msg_state: :ready}}
     end
   end
-  def handle_cast({:ack_message, process}, state) do
+  def handle_cast({:ack_message, _process}, state) do
     {:noreply, state}
   end
 
-  def handle_info({sub, [<<heart :: little-unsigned-integer-size(32) >>]}, %State{endpoint: :heart, sub: sub} = state) do
+  def handle_info({sub, [<<heart :: little-unsigned-integer-size(32) >>]}, %State{endpoint: :heartbeat, sub: sub} = state) do
     {:ok, state} = send_to_controller {:libbitcoin_client, :heart, heart}, state
     {:noreply, state}
   end
@@ -82,18 +82,18 @@ defmodule Libbitcoin.Client.Sub do
     {:noreply, state}
   end
   def handle_info({sub, [<<node_id :: little-integer-unsigned-size(32)>>,
-    <<1 ::  little-integer-unsigned-size(32)>>, <<hash :: binary-size(32)>>] = payload},
+    <<1 ::  little-integer-unsigned-size(32)>>, <<hash :: binary-size(32)>>]},
     %State{endpoint: :radar, sub: sub} = state) do
     {:ok, state} = send_to_controller {:libbitcoin_client, :transaction_radar, node_id, String.reverse(hash)}, state
     {:noreply, state}
   end
   def handle_info({sub, [<<node_id :: little-integer-unsigned-size(32)>>,
-    <<2 ::  little-integer-unsigned-size(32)>>, <<hash :: binary>>] = payload},
+    <<2 ::  little-integer-unsigned-size(32)>>, <<hash :: binary>>]},
     %State{endpoint: :radar, sub: sub} = state) do
     {:ok, state} = send_to_controller {:libbitcoin_client, :block_radar, node_id, String.reverse(hash)}, state
     {:noreply, state}
   end
-  def handle_info({:resubscribe, prefix}, %State{socket: socket, context: ctx} = state) do
+  def handle_info({:resubscribe, prefix}, %State{socket: socket} = state) do
     IO.inspect :resubscribe
     :ok = :czmq.zsocket_set_unsubscribe socket, prefix
     :ok = :czmq.zsocket_set_subscribe socket, prefix
@@ -101,12 +101,12 @@ defmodule Libbitcoin.Client.Sub do
     {:noreply, state}
   end
 
-  def send_to_controller(message, %State{controlling_process: nil} = state), do: {:ok, state}
+  def send_to_controller(_message, %State{controlling_process: nil} = state), do: {:ok, state}
   def send_to_controller(message, %State{msg_state: :ready, controlling_process: {_ref, controlling_process}} = state) do
     send controlling_process, message
     {:ok, %State{state| msg_state: :need_ack}}
   end
-  def send_to_controller(message, %State{msg_state: :need_ack, queue: queue, controlling_process: {_ref, controlling_process}} = state) do
+  def send_to_controller(message, %State{msg_state: :need_ack, queue: queue, controlling_process: {_ref, _controlling_process}} = state) do
     queue = :queue.in_r(message, queue)
     queue = case :queue.len(queue) do
       n when n > @queue_size ->

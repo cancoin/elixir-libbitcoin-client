@@ -16,12 +16,11 @@ defmodule Libbitcoin.Client do
   end
 
   def block_header(client, height, owner \\ self) when is_integer(height) do
-    cast(client, "blockchain.fetch_block_header", encode_int(height))
+    cast(client, "blockchain.fetch_block_header", encode_int(height), owner)
   end
 
   def block_transaction_hashes(client, hash, owner \\ self) when is_binary(hash) do
-    rev_hash = reverse_hash(hash)
-    cast(client, "blockchain.fetch_block_transaction_hashes", hash)
+    cast(client, "blockchain.fetch_block_transaction_hashes", reverse_hash(hash), owner)
   end
 
   def blockchain_transaction(client, txid, owner \\ self) do
@@ -37,7 +36,7 @@ defmodule Libbitcoin.Client do
   end
 
   def spend(client, txid, index, owner \\ self) do
-    cast(client, "blockchain.fetch_spend", reverse_hash(txid) <> encode_int(index))
+    cast(client, "blockchain.fetch_spend", reverse_hash(txid) <> encode_int(index), owner)
   end
 
   def address_history(client, address, height \\ 0,  owner \\ self) do
@@ -72,7 +71,7 @@ defmodule Libbitcoin.Client do
   end
 
   def handle_cast({:command, request_id, command, argv, owner}, state) do
-    {:ok, state} = state = add_request(request_id, owner, state)
+    {:ok, state} = add_request(request_id, owner, state)
     case send_command(request_id, command, argv, state) do
       {:ok, state} ->
         {:noreply, state}
@@ -101,11 +100,7 @@ defmodule Libbitcoin.Client do
     end
   end
 
-  def handle_info(evt, state) do
-    {:noreply, state}
-  end
-
-  defp cast(client, command, argv, owner \\ self) do
+  defp cast(client, command, argv, owner) do
     request_id = new_request_id
     case GenServer.cast(client, {:command, request_id, command, argv, owner}) do
       :ok -> {:ok, request_id}
@@ -159,7 +154,7 @@ defmodule Libbitcoin.Client do
   defp decode_command(_command, <<error :: little-integer-unsigned-size(32), _rest :: binary>>) when error != 0 do
     {:error, error}
   end
-  defp decode_command(any, reply) do
+  defp decode_command(_any, _reply) do
     {:error, :unknown_reply}
   end
 
@@ -194,7 +189,7 @@ defmodule Libbitcoin.Client do
   defp history_row_type(<<0>>), do: :output
   defp history_row_type(<<1>>), do: :spend
 
-  defp send_payload(request_id, command, payload, %Client{socket: socket, context: ctx, timeout: timeout} = state) do
+  defp send_payload(request_id, command, payload, %Client{socket: socket, timeout: timeout} = state) do
     bin_request_id = <<request_id :: unsigned-little-integer-size(32)>>
     _timerref = schedule_timeout(request_id, timeout)
     case :czmq.zsocket_send_all(socket, [command, bin_request_id, payload]) do
@@ -257,7 +252,7 @@ defmodule Libbitcoin.Client do
 
   defp encode_int(int), do: <<int :: little-integer-unsigned-size(32)>>
 
-  defp decode_int(<<int :: little-integer-unsigned-size(32)>>), do: int
+  #  defp decode_int(<<int :: little-integer-unsigned-size(32)>>), do: int
 
   defp reverse_hash(hash) do
     reverse_hash(hash, <<>>)
@@ -270,7 +265,7 @@ defmodule Libbitcoin.Client do
     reverse_hash(rest, <<h :: binary, acc :: binary>>)
   end
 
-  defp encode_hex(hash), do: Base.encode16(reverse_hash(hash), case: :lower)
+  #  defp encode_hex(hash), do: Base.encode16(reverse_hash(hash), case: :lower)
 
   def decode_base58check(address) do
     <<version::binary-size(1), pkh::binary-size(20), checksum::binary-size(4)>> = :base58.base58_to_binary(to_char_list(address))
