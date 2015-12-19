@@ -121,33 +121,26 @@ defmodule Libbitcoin.Client do
     send_payload(request_id, command, payload, state)
   end
 
-  defp decode_command(_command,
-    <<3 :: little-integer-unsigned-size(32), _rest :: binary>>) do
-
+  defp decode_command(_command, <<3 :: little-integer-unsigned-size(32), _rest :: binary>>) do
     {:error, :not_found}
   end
-  defp decode_command(command,
-    <<0 :: little-integer-unsigned-size(32),
-    height :: little-integer-unsigned-size(32)>> )
+  defp decode_command(command, <<0 :: little-integer-unsigned-size(32),
+                                 height :: little-integer-unsigned-size(32)>>)
     when command in ["blockchain.fetch_last_height", "blockchain.fetch_block_height"] do
 
     {:ok, height}
   end
   defp decode_command("blockchain.fetch_block_header",
     <<0 :: little-integer-unsigned-size(32), header :: binary>>) do
-
     {:ok, header}
   end
   defp decode_command("blockchain.fetch_block_transaction_hashes",
     <<0 :: little-integer-unsigned-size(32), hashes :: binary>>) do
-
     {:ok, hashes}
   end
   defp decode_command(command,
     <<0 :: little-integer-unsigned-size(32), transaction :: binary>> )
-    when command in ["blockchain.fetch_transaction",
-                     "transaction_pool.fetch_transaction"] do
-
+    when command in ["blockchain.fetch_transaction", "transaction_pool.fetch_transaction"] do
     {:ok, transaction}
   end
   defp decode_command("blockchain.fetch_transaction_index",
@@ -163,26 +156,20 @@ defmodule Libbitcoin.Client do
     {:error, :unspent}
   end
   defp decode_command("blockchain.fetch_spend",
-    <<0 :: little-integer-unsigned-size(32),
-    txid :: binary-size(32),
-    index :: little-integer-unsigned-size(32)>>) do
+    <<0 :: little-integer-unsigned-size(32), txid :: binary-size(32),
+      index :: little-integer-unsigned-size(32)>>) do
 
     {:ok, {reverse_hash(txid), index}}
   end
-  defp decode_command("blockchain.fetch_history",
-    <<0 :: little-integer-unsigned-size(32)>>) do
-
+  defp decode_command("blockchain.fetch_history", <<0 :: little-integer-unsigned-size(32)>>) do
     {:ok, []}
   end
   defp decode_command("address.fetch_history",
     <<_code :: little-integer-size(32), history :: binary>>) do
-
     decode_history1(history, [])
   end
-  defp decode_command(command,
-   <<_code :: little-integer-size(32), history :: binary>>)
+  defp decode_command(command, <<_code :: little-integer-size(32), history :: binary>>)
    when command in ["blockchain.fetch_history", "address.fetch_history2"] do
-
     decode_history2(history, [])
   end
   defp decode_command(_command, <<error :: little-integer-unsigned-size(32),
