@@ -43,16 +43,16 @@ defmodule Libbitcoin.Client do
     {prefix, decoded} = decode_base58check(address)
     cast(client, "address.fetch_history",
       <<prefix :: binary-size(1),
-      reverse_hash(decoded) :: binary-size(20),
-      encode_int(height) :: binary>>, owner)
+        reverse_hash(decoded) :: binary-size(20),
+        encode_int(height) :: binary>>, owner)
   end
 
   def address_history2(client, address, height \\ 0,  owner \\ self) do
     {prefix, decoded} = decode_base58check(address)
     cast(client, "address.fetch_history2",
       <<prefix :: binary-size(1),
-      decoded :: binary-size(20),
-      encode_int(height) :: binary>>, owner)
+        decoded :: binary-size(20),
+        encode_int(height) :: binary>>, owner)
   end
 
   def blockchain_history(client, address, height \\ 0,  owner \\ self) do
@@ -124,10 +124,9 @@ defmodule Libbitcoin.Client do
   defp decode_command(_command, <<3 :: little-integer-unsigned-size(32), _rest :: binary>>) do
     {:error, :not_found}
   end
-  defp decode_command(command, <<0 :: little-integer-unsigned-size(32),
-                                 height :: little-integer-unsigned-size(32)>>)
+  defp decode_command(command,
+    <<0 :: little-integer-unsigned-size(32), height :: little-integer-unsigned-size(32)>>)
     when command in ["blockchain.fetch_last_height", "blockchain.fetch_block_height"] do
-
     {:ok, height}
   end
   defp decode_command("blockchain.fetch_block_header",
