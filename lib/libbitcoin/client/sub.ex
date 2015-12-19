@@ -94,7 +94,6 @@ defmodule Libbitcoin.Client.Sub do
     {:noreply, state}
   end
   def handle_info({:resubscribe, prefix}, %State{socket: socket} = state) do
-    IO.inspect :resubscribe
     :ok = :czmq.zsocket_set_unsubscribe socket, prefix
     :ok = :czmq.zsocket_set_subscribe socket, prefix
     schedule_resubscribe!

@@ -41,17 +41,26 @@ defmodule Libbitcoin.Client do
 
   def address_history(client, address, height \\ 0,  owner \\ self) do
     {prefix, decoded} = decode_base58check(address)
-    cast(client, "address.fetch_history", <<prefix :: binary-size(1), reverse_hash(decoded) :: binary-size(20), encode_int(height) :: binary>>, owner)
+    cast(client, "address.fetch_history",
+      <<prefix :: binary-size(1),
+      reverse_hash(decoded) :: binary-size(20),
+      encode_int(height) :: binary>>, owner)
   end
 
   def address_history2(client, address, height \\ 0,  owner \\ self) do
     {prefix, decoded} = decode_base58check(address)
-    cast(client, "address.fetch_history2",<<prefix :: binary-size(1), decoded :: binary-size(20), encode_int(height) :: binary>>, owner)
+    cast(client, "address.fetch_history2",
+      <<prefix :: binary-size(1),
+      decoded :: binary-size(20),
+      encode_int(height) :: binary>>, owner)
   end
 
   def blockchain_history(client, address, height \\ 0,  owner \\ self) do
     {prefix, decoded} = decode_base58check(address)
-    cast(client, "blockchain.fetch_history", <<prefix :: binary-size(1), decoded :: binary-size(20), encode_int(height) :: binary>>, owner)
+    cast(client, "blockchain.fetch_history",
+      <<prefix :: binary-size(1),
+        decoded :: binary-size(20),
+        encode_int(height) :: binary>>, owner)
   end
 
   def start_link(uri, timeout \\ @default_timeout) do
@@ -112,46 +121,72 @@ defmodule Libbitcoin.Client do
     send_payload(request_id, command, payload, state)
   end
 
-  defp decode_command(_command, <<3 :: little-integer-unsigned-size(32), _rest :: binary>>) do
+  defp decode_command(_command,
+    <<3 :: little-integer-unsigned-size(32), _rest :: binary>>) do
+
     {:error, :not_found}
   end
-  defp decode_command(command, <<0 :: little-integer-unsigned-size(32), height :: little-integer-unsigned-size(32)>> )
+  defp decode_command(command,
+    <<0 :: little-integer-unsigned-size(32),
+    height :: little-integer-unsigned-size(32)>> )
     when command in ["blockchain.fetch_last_height", "blockchain.fetch_block_height"] do
+
     {:ok, height}
   end
-  defp decode_command("blockchain.fetch_block_header", <<0 :: little-integer-unsigned-size(32), header :: binary>> ) do
+  defp decode_command("blockchain.fetch_block_header",
+    <<0 :: little-integer-unsigned-size(32), header :: binary>>) do
+
     {:ok, header}
   end
-  defp decode_command("blockchain.fetch_block_transaction_hashes", <<0 :: little-integer-unsigned-size(32), hashes :: binary>> ) do
+  defp decode_command("blockchain.fetch_block_transaction_hashes",
+    <<0 :: little-integer-unsigned-size(32), hashes :: binary>>) do
+
     {:ok, hashes}
   end
-  defp decode_command(command, <<0 :: little-integer-unsigned-size(32), transaction :: binary>> )
-    when command in ["blockchain.fetch_transaction", "transaction_pool.fetch_transaction"] do
+  defp decode_command(command,
+    <<0 :: little-integer-unsigned-size(32), transaction :: binary>> )
+    when command in ["blockchain.fetch_transaction",
+                     "transaction_pool.fetch_transaction"] do
+
     {:ok, transaction}
   end
   defp decode_command("blockchain.fetch_transaction_index",
-    <<0 :: little-integer-unsigned-size(32), height :: little-integer-unsigned-size(32), index :: little-integer-unsigned-size(32)>>) do
+    <<0 :: little-integer-unsigned-size(32),
+      height :: little-integer-unsigned-size(32),
+      index :: little-integer-unsigned-size(32)>>) do
+
     {:ok, {height, index}}
   end
   defp decode_command("blockchain.fetch_spend",
     <<5 :: little-integer-unsigned-size(32), _ :: binary>>) do
+
     {:error, :unspent}
   end
   defp decode_command("blockchain.fetch_spend",
-    <<0 :: little-integer-unsigned-size(32), txid :: binary-size(32), index :: little-integer-unsigned-size(32)>>) do
+    <<0 :: little-integer-unsigned-size(32),
+    txid :: binary-size(32),
+    index :: little-integer-unsigned-size(32)>>) do
+
     {:ok, {reverse_hash(txid), index}}
   end
-  defp decode_command("blockchain.fetch_history", <<0 :: little-integer-unsigned-size(32)>>) do
+  defp decode_command("blockchain.fetch_history",
+    <<0 :: little-integer-unsigned-size(32)>>) do
+
     {:ok, []}
   end
-  defp decode_command("address.fetch_history", <<_code :: little-integer-size(32), history :: binary>>) do
+  defp decode_command("address.fetch_history",
+    <<_code :: little-integer-size(32), history :: binary>>) do
+
     decode_history1(history, [])
   end
-  defp decode_command(command, <<_code :: little-integer-size(32), history :: binary>>)
+  defp decode_command(command,
+   <<_code :: little-integer-size(32), history :: binary>>)
    when command in ["blockchain.fetch_history", "address.fetch_history2"] do
+
     decode_history2(history, [])
   end
-  defp decode_command(_command, <<error :: little-integer-unsigned-size(32), _rest :: binary>>) when error != 0 do
+  defp decode_command(_command, <<error :: little-integer-unsigned-size(32),
+                                 _rest :: binary>>) when error != 0 do
     {:error, error}
   end
   defp decode_command(_any, _reply) do
@@ -168,8 +203,14 @@ defmodule Libbitcoin.Client do
                         spend_height :: little-unsigned-integer-size(32),
                         rest :: binary>>, acc) do
 
-    row = %{output_hash: reverse_hash(output_hash), output_index: output_index, output_height: output_height,
-            value: value, spend_hash: reverse_hash(spend_hash), spend_index: spend_index, spend_height: spend_height}
+    row = %{output_hash: reverse_hash(output_hash),
+            output_index: output_index,
+            output_height: output_height,
+            value: value,
+            spend_hash: reverse_hash(spend_hash),
+            spend_index: spend_index,
+            spend_height: spend_height}
+
     decode_history1(rest, [row|acc])
   end
 
@@ -181,7 +222,12 @@ defmodule Libbitcoin.Client do
                          value :: little-unsigned-integer-size(64),
                          rest :: binary>>, acc) do
 
-    row = %{type: history_row_type(type), hash: reverse_hash(hash), index: index, height: height, value: value}
+    row = %{type: history_row_type(type),
+            hash: reverse_hash(hash),
+            index: index,
+            height: height,
+            value: value}
+
     decode_history2(rest, [row|acc])
   end
 
@@ -189,7 +235,8 @@ defmodule Libbitcoin.Client do
   defp history_row_type(<<0>>), do: :output
   defp history_row_type(<<1>>), do: :spend
 
-  defp send_payload(request_id, command, payload, %Client{socket: socket, timeout: timeout} = state) do
+  defp send_payload(request_id, command, payload,
+    %Client{socket: socket, timeout: timeout} = state) do
     bin_request_id = <<request_id :: unsigned-little-integer-size(32)>>
     _timerref = schedule_timeout(request_id, timeout)
     case :czmq.zsocket_send_all(socket, [command, bin_request_id, payload]) do
@@ -209,7 +256,8 @@ defmodule Libbitcoin.Client do
     end
   end
 
-  defp handle_reply([command, <<request_id :: integer-little-unsigned-size(32)>>, reply], %Client{requests: requests} = state) do
+  defp handle_reply([command, <<request_id :: integer-little-unsigned-size(32)>>, reply],
+                    %Client{requests: requests} = state) do
     case Map.fetch(requests, request_id) do
       {:ok, owner} when is_pid(owner) ->
         decode_command(command, reply) |> send_reply(command, request_id, owner)
@@ -252,8 +300,6 @@ defmodule Libbitcoin.Client do
 
   defp encode_int(int), do: <<int :: little-integer-unsigned-size(32)>>
 
-  #  defp decode_int(<<int :: little-integer-unsigned-size(32)>>), do: int
-
   defp reverse_hash(hash) do
     reverse_hash(hash, <<>>)
   end
@@ -265,10 +311,9 @@ defmodule Libbitcoin.Client do
     reverse_hash(rest, <<h :: binary, acc :: binary>>)
   end
 
-  #  defp encode_hex(hash), do: Base.encode16(reverse_hash(hash), case: :lower)
-
   def decode_base58check(address) do
-    <<version::binary-size(1), pkh::binary-size(20), checksum::binary-size(4)>> = :base58.base58_to_binary(to_char_list(address))
+    <<version::binary-size(1), pkh::binary-size(20), checksum::binary-size(4)>> =
+      :base58.base58_to_binary(to_char_list(address))
     case  :crypto.hash(:sha256, :crypto.hash(:sha256, version <> pkh)) do
       <<^checksum :: binary-size(4), _ :: binary>> -> {version, pkh}
       _ -> {:error, :invalid_checksum}
