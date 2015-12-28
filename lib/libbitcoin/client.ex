@@ -1,11 +1,14 @@
 defmodule Libbitcoin.Client do
   alias Libbitcoin.Client
 
-  @max_uint32 4294967295
   @default_timeout 2000
   @hz 10
 
   defstruct [context: nil, socket: nil, requests: %{}, timeout: 1000]
+
+  def start_link(uri, timeout \\ @default_timeout) do
+    GenServer.start_link(__MODULE__, [uri, timeout])
+  end
 
   def last_height(client, owner \\ self) do
     cast(client, "blockchain.fetch_last_height", "", owner)
@@ -61,10 +64,6 @@ defmodule Libbitcoin.Client do
       <<prefix :: binary-size(1),
         decoded :: binary-size(20),
         encode_int(height) :: binary>>, owner)
-  end
-
-  def start_link(uri, timeout \\ @default_timeout) do
-    GenServer.start_link(__MODULE__, [uri, timeout])
   end
 
   def init([uri, timeout]) do
@@ -135,6 +134,7 @@ defmodule Libbitcoin.Client do
   end
   defp decode_command("blockchain.fetch_block_transaction_hashes",
     <<0 :: little-integer-unsigned-size(32), hashes :: binary>>) do
+    hashes = transform_block_transactions_hashes(hashes, [])
     {:ok, hashes}
   end
   defp decode_command(command,
@@ -304,5 +304,10 @@ defmodule Libbitcoin.Client do
       <<^checksum :: binary-size(4), _ :: binary>> -> {version, pkh}
       _ -> {:error, :invalid_checksum}
     end
+  end
+
+  def transform_block_transactions_hashes(<<"">>, txids), do: Enum.reverse(txids)
+  def transform_block_transactions_hashes(<<txid :: binary-size(32), rest :: binary>>, txids) do
+    transform_block_transactions_hashes(rest, [reverse_hash(txid)|txids])
   end
 end
