@@ -16,7 +16,7 @@ defmodule BitcoinClient.Mixfile do
 
   defp deps do
     [
-      {:czmq, github: "cancoin/erlang-czmq"},
+      {:czmq, github: "gar1t/erlang-czmq"},
       {:base58, github: "titan098/erl-base58"}
     ]
   end

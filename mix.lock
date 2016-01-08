@@ -1,2 +1,2 @@
 %{"base58": {:git, "https://github.com/titan098/erl-base58.git", "c5319e77a8edf8c13a3522928384a65511d26a88", []},
-  "czmq": {:git, "https://github.com/cancoin/erlang-czmq.git", "fe2a6a1aa3339a2347e161dad1bc4aef034d9704", []}}
+  "czmq": {:git, "https://github.com/gar1t/erlang-czmq.git", "fe2a6a1aa3339a2347e161dad1bc4aef034d9704", []}}
