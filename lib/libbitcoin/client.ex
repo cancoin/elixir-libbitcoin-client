@@ -264,31 +264,31 @@ defmodule Libbitcoin.Client do
     end
   end
 
-  def add_request(request_id, owner, %Client{requests: requests} = state) do
+  defp add_request(request_id, owner, %Client{requests: requests} = state) do
     {:ok, %Client{state | requests: Map.put(requests, request_id, owner)}}
   end
 
-  def clear_request(request_id, requests) do
+  defp clear_request(request_id, requests) do
     {:ok,  Map.delete(requests, request_id)}
   end
 
-  def retry_receive_payload(%Client{requests: []} = state) do
+  defp retry_receive_payload(%Client{requests: []} = state) do
     {:ok, state}
   end
-  def retry_receive_payload(state) do
+  defp retry_receive_payload(state) do
     :erlang.send_after(@hz, self, :receive_payload)
     {:ok, state}
   end
 
-  def schedule_timeout(request_id, timeout) do
+  defp schedule_timeout(request_id, timeout) do
     :erlang.send_after(timeout, self, {:timeout, request_id})
   end
 
-  def send_reply({:ok, decoded}, command, request_id, owner) do
+  defp send_reply({:ok, decoded}, command, request_id, owner) do
     send(owner, {:libbitcoin_client, command, request_id, decoded})
   end
 
-  def send_reply({:error, reason}, command, request_id, owner) do
+  defp send_reply({:error, reason}, command, request_id, owner) do
     send(owner, {:libbitcoin_client_error, command, request_id, reason})
   end
 
