@@ -69,7 +69,7 @@ defmodule Libbitcoin.Client.Sub do
   end
 
   def handle_info({sub, [<<heart :: little-unsigned-integer-size(32) >>]}, %State{endpoint: :heartbeat, sub: sub} = state) do
-    {:ok, state} = send_to_controller {:libbitcoin_client, :heart, heart}, state
+    {:ok, state} = send_to_controller {:libbitcoin_client, :heartbeat, heart}, state
     {:noreply, state}
   end
   def handle_info({sub, [tx]}, %State{endpoint: :transaction, sub: sub} = state) do
