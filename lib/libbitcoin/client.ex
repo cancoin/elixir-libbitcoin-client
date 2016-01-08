@@ -1,5 +1,6 @@
 defmodule Libbitcoin.Client do
   alias Libbitcoin.Client
+  use Bitwise
 
   @default_timeout 2000
   @hz 10
@@ -64,6 +65,15 @@ defmodule Libbitcoin.Client do
       <<prefix :: binary-size(1),
         decoded :: binary-size(20),
         encode_int(height) :: binary>>, owner)
+  end
+
+  @divisor 1 <<< 63
+  def spend_checksum(hash, index) do
+    encoded_index = <<index :: little-unsigned-size(32)>>
+    <<_ :: binary-size(4), hash_value :: binary-size(4), _ :: binary>> = reverse_hash(hash)
+    encoded_value = <<encoded_index :: binary-size(4), hash_value :: binary-size(4)>>
+    value = :binary.decode_unsigned(encoded_value, :little)
+    value &&& (@divisor - 1)
   end
 
   def init([uri, timeout]) do

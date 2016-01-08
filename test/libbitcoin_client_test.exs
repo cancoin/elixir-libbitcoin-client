@@ -72,4 +72,9 @@ defmodule BitcoinClientTest do
     assert {:ok, ref} = C.blockchain_history(:bs, "12cbQLTFMXRnSzktFkuoG3eHoMeFtpTu3S", 0)
     assert_receive {:libbitcoin_client, "blockchain.fetch_history", ^ref, [row|_]} when is_map(row), @timeout
   end
+
+  test "spend_checksum" do
+    hash = Base.decode16!("ab00248cd12452c2c45be7ca91899fd8e174595b4d16e2f2e3c92dedbb1d8cea", case: :lower)
+    assert C.spend_checksum(hash, 0) == 7190328776004206592
+  end
 end
