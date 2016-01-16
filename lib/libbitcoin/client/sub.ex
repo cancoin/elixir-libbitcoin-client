@@ -99,7 +99,7 @@ defmodule Libbitcoin.Client.Sub do
     schedule_resubscribe!
     {:noreply, state}
   end
-  def handle_info({:DOWN, _ref, :process, pid, :normal}, %State{socket: socket} = state) do
+  def handle_info({:DOWN, _ref, :process, _pid, :normal}, %State{socket: socket} = state) do
     {:ok, %State{state | controlling_process: nil}}
   end
 

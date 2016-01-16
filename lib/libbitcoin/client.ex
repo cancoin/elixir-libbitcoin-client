@@ -1,14 +1,15 @@
 defmodule Libbitcoin.Client do
   alias Libbitcoin.Client
   use Bitwise
+  use Libbitcoin.Client.ErrorCode
 
   @default_timeout 2000
   @hz 10
 
   defstruct [context: nil, socket: nil, requests: %{}, timeout: 1000]
 
-  def start_link(uri, timeout \\ @default_timeout) do
-    GenServer.start_link(__MODULE__, [uri, timeout])
+  def start_link(uri, options \\ %{}) do
+    GenServer.start_link(__MODULE__, [uri, options])
   end
 
   def last_height(client, owner \\ self) do
@@ -43,6 +44,16 @@ defmodule Libbitcoin.Client do
     cast(client, "blockchain.fetch_spend", reverse_hash(txid) <> encode_int(index), owner)
   end
 
+  def stealth(client, bits, height \\ 0, owner \\ self) do
+    bitfield = encode_stealth(bits)
+    bitfield_size = byte_size(bitfield)
+    size = byte_size(bits)
+    cast(client, "blockchain.fetch_stealth",
+      << size :: unsigned-integer-size(8),
+         bitfield :: binary-size(bitfield_size),
+         height :: unsigned-integer-size(32)>>, owner)
+  end
+
   def address_history(client, address, height \\ 0,  owner \\ self) do
     {prefix, decoded} = decode_base58check(address)
     cast(client, "address.fetch_history",
@@ -67,6 +78,19 @@ defmodule Libbitcoin.Client do
         encode_int(height) :: binary>>, owner)
   end
 
+  def total_connections(client, owner \\ self) do
+    cast(client, "protocol.total_connections", "", owner)
+  end
+
+  def validate(client, tx, owner \\ self) do
+    cast(client, "transaction_pool.validate", tx, owner)
+  end
+
+  def broadcast_transaction(client, tx, owner \\ self) do
+    cast(client, "protocol.broadcast_transasction", tx, owner)
+  end
+
+
   @divisor 1 <<< 63
   def spend_checksum(hash, index) do
     encoded_index = <<index :: little-unsigned-size(32)>>
@@ -76,7 +100,7 @@ defmodule Libbitcoin.Client do
     value &&& (@divisor - 1)
   end
 
-  def init([uri, timeout]) do
+  def init([uri, %{timeout: timeout}]) do
     {:ok, ctx} = :czmq.start_link
     socket = :czmq.zsocket_new ctx, :dealer
     :ok = :czmq.zctx_set_linger ctx, 0
@@ -86,6 +110,10 @@ defmodule Libbitcoin.Client do
       {:error, _} = error ->
         {:stop, error}
     end
+  end
+  def init([uri, options]) do
+    options = Map.merge(options, %{timeout: @default_timeout})
+    init([uri, options])
   end
 
   def handle_cast({:command, request_id, command, argv, owner}, state) do
@@ -134,59 +162,86 @@ defmodule Libbitcoin.Client do
     {:error, :not_found}
   end
   defp decode_command(command,
-    <<0 :: little-integer-unsigned-size(32), height :: little-integer-unsigned-size(32)>>)
+    <<@success :: little-integer-unsigned-size(32), height :: little-integer-unsigned-size(32)>>)
     when command in ["blockchain.fetch_last_height", "blockchain.fetch_block_height"] do
     {:ok, height}
   end
   defp decode_command("blockchain.fetch_block_header",
-    <<0 :: little-integer-unsigned-size(32), header :: binary>>) do
+    <<@success :: little-integer-unsigned-size(32), header :: binary>>) do
     {:ok, header}
   end
   defp decode_command("blockchain.fetch_block_transaction_hashes",
-    <<0 :: little-integer-unsigned-size(32), hashes :: binary>>) do
+    <<@success :: little-integer-unsigned-size(32), hashes :: binary>>) do
     hashes = transform_block_transactions_hashes(hashes, [])
     {:ok, hashes}
   end
   defp decode_command(command,
-    <<0 :: little-integer-unsigned-size(32), transaction :: binary>> )
+    <<@success :: little-integer-unsigned-size(32), transaction :: binary>> )
     when command in ["blockchain.fetch_transaction", "transaction_pool.fetch_transaction"] do
     {:ok, transaction}
   end
   defp decode_command("blockchain.fetch_transaction_index",
-    <<0 :: little-integer-unsigned-size(32),
+    <<@success :: little-integer-unsigned-size(32),
       height :: little-integer-unsigned-size(32),
       index :: little-integer-unsigned-size(32)>>) do
-
     {:ok, {height, index}}
   end
   defp decode_command("blockchain.fetch_spend",
-    <<5 :: little-integer-unsigned-size(32), _ :: binary>>) do
-
-    {:error, :unspent}
+    <<@not_found :: little-integer-unsigned-size(32), _ :: binary>>) do
+    {:error, error_code(5)}
   end
   defp decode_command("blockchain.fetch_spend",
-    <<0 :: little-integer-unsigned-size(32), txid :: binary-size(32),
+    <<@success :: little-integer-unsigned-size(32), txid :: binary-size(32),
       index :: little-integer-unsigned-size(32)>>) do
 
     {:ok, {reverse_hash(txid), index}}
   end
-  defp decode_command("blockchain.fetch_history", <<0 :: little-integer-unsigned-size(32)>>) do
+  defp decode_command("blockchain.fetch_stealth", <<@success :: little-integer-unsigned-size(32)>>) do
+    {:ok, []}
+  end
+  defp decode_command("blockchain.fetch_stealth", <<@success :: little-integer-size(32), rows :: binary>>) do
+    decode_stealth(rows, [])
+  end
+  defp decode_command("address.fetch_history", <<@success :: little-integer-unsigned-size(32)>>) do
     {:ok, []}
   end
   defp decode_command("address.fetch_history",
-    <<_code :: little-integer-size(32), history :: binary>>) do
+    <<@success :: little-integer-size(32), history :: binary>>) do
     decode_history1(history, [])
   end
-  defp decode_command(command, <<_code :: little-integer-size(32), history :: binary>>)
+  defp decode_command(command, <<@success :: little-integer-size(32), history :: binary>>)
    when command in ["blockchain.fetch_history", "address.fetch_history2"] do
     decode_history2(history, [])
   end
-  defp decode_command(_command, <<error :: little-integer-unsigned-size(32),
-                                 _rest :: binary>>) when error != 0 do
-    {:error, error}
+  defp decode_command("transaction_pool.validate",
+    <<ec :: little-integer-unsigned-size(32), _any :: binary>>) do
+    {:ok, error_code(ec)}
+  end
+  defp decode_command("protocol.broadcast_transasction",
+    <<ec :: little-integer-unsigned-size(32), _any :: binary>>) do
+    {:ok, error_code(ec)}
+  end
+  defp decode_command("protocol.total_connections",
+    <<@success :: little-integer-unsigned-size(32), connections :: little-integer-unsigned-size(32)>>) do
+   {:ok, connections}
+  end
+  defp decode_command(_command, <<ec :: little-integer-unsigned-size(32),
+                                 _rest :: binary>>) when ec != 0 do
+    {:error, error_code(ec)}
   end
   defp decode_command(_any, _reply) do
     {:error, :unknown_reply}
+  end
+
+  defp decode_stealth(<<>>, acc), do: {:ok, Enum.reverse(acc)}
+  defp decode_stealth(<<ephemkey :: binary-size(32),
+                        address :: binary-size(20),
+                        tx_hash :: binary-size(32),
+                        rest :: binary>>, acc) do
+    row = %{ephemkey: ephemkey,
+            address: address,
+            tx_hash: reverse_hash(tx_hash)}
+    decode_stealth(rest, [row|acc])
   end
 
   defp decode_history1(<<>>, acc), do: {:ok, Enum.reverse(acc)}
@@ -198,7 +253,6 @@ defmodule Libbitcoin.Client do
                         spend_index :: little-unsigned-integer-size(32),
                         spend_height :: little-unsigned-integer-size(32),
                         rest :: binary>>, acc) do
-
     row = %{output_hash: reverse_hash(output_hash),
             output_index: output_index,
             output_height: output_height,
@@ -206,7 +260,6 @@ defmodule Libbitcoin.Client do
             spend_hash: reverse_hash(spend_hash),
             spend_index: spend_index,
             spend_height: spend_height}
-
     decode_history1(rest, [row|acc])
   end
 
@@ -217,13 +270,11 @@ defmodule Libbitcoin.Client do
                          height :: little-unsigned-integer-size(32),
                          value :: little-unsigned-integer-size(64),
                          rest :: binary>>, acc) do
-
     row = %{type: history_row_type(type),
             hash: reverse_hash(hash),
             index: index,
             height: height,
             value: value}
-
     decode_history2(rest, [row|acc])
   end
 
@@ -300,9 +351,7 @@ defmodule Libbitcoin.Client do
     reverse_hash(hash, <<>>)
   end
 
-  defp reverse_hash(<<>>, acc) do
-    acc
-  end
+  defp reverse_hash(<<>>, acc), do: acc
   defp reverse_hash(<<h :: binary-size(1), rest :: binary>>, acc) do
     reverse_hash(rest, <<h :: binary, acc :: binary>>)
   end
@@ -319,5 +368,20 @@ defmodule Libbitcoin.Client do
   def transform_block_transactions_hashes(<<"">>, txids), do: Enum.reverse(txids)
   def transform_block_transactions_hashes(<<txid :: binary-size(32), rest :: binary>>, txids) do
     transform_block_transactions_hashes(rest, [reverse_hash(txid)|txids])
+  end
+
+  @stealth_block_size 8
+  def encode_stealth(prefix), do: encode_stealth(prefix, [])
+
+  def encode_stealth(<<>>, blocks) do
+    Enum.reverse(blocks) |> IO.iodata_to_binary
+  end
+  def encode_stealth(<<block :: binary-size(@stealth_block_size), tail :: binary>>, blocks) do
+    value = String.to_integer(block, 2) |> :binary.encode_unsigned
+    encode_stealth(tail, [value|blocks])
+  end
+  def encode_stealth(<<block :: binary>>, blocks) do
+    str = String.ljust(block, @stealth_block_size, ?0)
+    encode_stealth(str, blocks)
   end
 end
