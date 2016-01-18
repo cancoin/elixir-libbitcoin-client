@@ -9,15 +9,13 @@ Libbitcoin Server client for Elixir.
 Description
 -----------
 
-Clients connect to Libbitcoin Server via a CZMQ port process.
-The client provides an asynchronous query interface along with transaction,
-block, and heartbeat notifications.
+The client connects to Libbitcoin Server via a CZMQ port process and provides an asynchronous query interface along with transaction, block, and heartbeat notifications.
 
-A user process communicates with the client process by calling functions in the
+The controlling process communicates with the client by calling functions in the
 `Libbitcoin.Client` module. All functions proform their respective
-operations asyncronusly. When a command is executed
-it must include a reference to the owner process, which is by default is the current
-process. The Client process will send Erlang messages to
+operations asyncronusly. When a command is executed it must include a reference
+to the owner process, which is by default is the current
+process. The client process will send Erlang messages to
 the specified owner when it has recieved a response from the server.
 
 Getting Started
@@ -26,11 +24,10 @@ Getting Started
 To use client you need to install it as a dependancy.
 
 ```elixir
-{:libbitcoin_client, ">= 0.1.0"}
+{:libbitcoin_client, github: "cancoin/elixir-libbitcoin-client"}
 ```
 
-
-Query Interface Usage
+Usage
 ---------------------
 
 The `Libbitcoin.Client.start_link/{1,2}` function must be used to start
@@ -49,8 +46,7 @@ Opening a client with a custom timeout
 
 ```
 
-Two types of messages are sent to the process owner after recieving them
-from libbitcoin-server, success messages and error messages.
+Two types of messages are sent to the process owner in response to queries.
 
 Success:
 
@@ -64,12 +60,9 @@ Error:
 {:libbitcoin_client_error, command-name, reference, error-atom}
 ```
 
-
-Examples
---------
+#### Examples
 
 Getting the last height of the blockchain
-
 
 ```elixir
 {:ok, ref} = Libbitcoin.Client.last_height(client)
@@ -82,21 +75,18 @@ end
 ```
 
 
-Subscription Interface Usage
-----------------------------
-
+Subscriptions
+-------------
 
 The `Libbitcoin.Client.Sub` module provides a seperate client that
 subscribes to libbitcoin-server's event channels and forwards the messages to the controlling Erlang process
 in an "active-once" pattern simmilar to gen_tcp sockets. After every
-message sent the controlling process must acknowledge the message by
+message received the controlling process must acknowledge the message by
 calling `Libbitcoin.Client.Sub.ack_message/1` before any more messages
 will be sent. Messages are buffered into a queue in the client process before they are
-dropped.
+dropped when a (soon to be) configurable maximum length is reached.
 
-
-Examples
---------
+#### Examples
 
 ```elixir
 alias Libbitcoin.Client.Sub
@@ -108,6 +98,31 @@ receive do
     Sub.ack_message(client)
 end
 ````
+
+As a GenServer
+
+```elixir
+defmodule TxSub do
+  alias Libbitcoin.Client.Sub
+  use GenServer
+  
+  def init([uri]) do
+    {:ok, client} = Sub.tranasction(uri)
+    :ok = Sub.controlling_process(client)
+    {:ok, %{client: client}}
+  end
+  
+  def handle_info({:libbitcoin_client, :transaction, transaction}, %{client: client} = state) do
+    IO.puts "New transaction: #{transaction}"
+    Sub.ack_message(client)
+    {:noreply, state}
+  end
+end
+
+GenServer.start_link(TxSub, ["tcp://bs1.cancoin.co:9091"])
+```
+  
+  
 
 
 
