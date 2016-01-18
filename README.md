@@ -36,13 +36,13 @@ a client.
 Opening a Client connection with default options
 
 ```elixir
-{:ok, client} = Libbitcoin.Client.start_link("tcp://bs1.cancoin.co")
+{:ok, client} = Libbitcoin.Client.start_link("tcp://bs1.cancoin.co:9091")
 ```
 
 Opening a client with a custom timeout
 
 ```elixir
-{:ok, client} = Libbitcoin.Client.start_link("tcp://bs1.cancoin.co", %{timeout: 100})
+{:ok, client} = Libbitcoin.Client.start_link("tcp://bs1.cancoin.co:9091", %{timeout: 100})
 
 ```
 
@@ -67,9 +67,9 @@ Getting the last height of the blockchain
 ```elixir
 {:ok, ref} = Libbitcoin.Client.last_height(client)
 receive do
-  {:libbitcoin_client, "blockchain.fetch_block_height", ^ref, height} ->
+  {:libbitcoin_client, "blockchain.fetch_last_height", ^ref, height} ->
      IO.puts "Last block height: #{height}"
-  {:libbitcoin_client_error, "blockchain.fetch_block_height", ^ref, error} ->
+  {:libbitcoin_client_error, "blockchain.fetch_last_height", ^ref, error} ->
      IO.puts "Error getting last block height: #{error}"
 end
 ```
@@ -90,11 +90,11 @@ dropped when a (soon to be) configurable maximum length is reached.
 
 ```elixir
 alias Libbitcoin.Client.Sub
-{:ok, client} = Sub.tranasction("tcp://bs1.cancoin.co:9091")
+{:ok, client} = Sub.transaction("tcp://bs1.cancoin.co:9094")
 :ok = Sub.controlling_process(client)
 receive do
   {:libbitcoin_client, :transaction, transaction} ->
-    IO.puts "New transaction: #{transaction}"
+    IO.puts "New transaction: #{Base.encode16(transaction)}"
     Sub.ack_message(client)
 end
 ````
@@ -105,24 +105,22 @@ As a GenServer
 defmodule TxSub do
   alias Libbitcoin.Client.Sub
   use GenServer
-  
+
   def init([uri]) do
-    {:ok, client} = Sub.tranasction(uri)
+    {:ok, client} = Sub.transaction(uri)
     :ok = Sub.controlling_process(client)
     {:ok, %{client: client}}
   end
-  
+
   def handle_info({:libbitcoin_client, :transaction, transaction}, %{client: client} = state) do
-    IO.puts "New transaction: #{transaction}"
+    IO.inspect "New transaction: #{Base.encode16(transaction)}"
     Sub.ack_message(client)
     {:noreply, state}
   end
 end
 
-GenServer.start_link(TxSub, ["tcp://bs1.cancoin.co:9091"])
+GenServer.start_link(TxSub, ["tcp://bs1.cancoin.co:9094"])
 ```
-  
-  
 
 
 
