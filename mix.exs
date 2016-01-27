@@ -11,13 +11,13 @@ defmodule BitcoinClient.Mixfile do
   end
 
   def application do
-    [applications: [:logger, :czmq]]
+    [applications: [:logger, :czmq, :base58]]
   end
 
   defp deps do
     [
       {:czmq, github: "gar1t/erlang-czmq"},
-      {:base58, github: "titan098/erl-base58"}
+      {:base58, github: "cancoin/erl-base58"}
     ]
   end
 end
