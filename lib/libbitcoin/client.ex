@@ -217,7 +217,7 @@ defmodule Libbitcoin.Client do
     <<ec :: little-integer-unsigned-size(32), _any :: binary>>) do
     {:ok, error_code(ec)}
   end
-  defp decode_command("protocol.broadcast_transasction",
+  defp decode_command("protocol.broadcast_transaction",
     <<ec :: little-integer-unsigned-size(32), _any :: binary>>) do
     {:ok, error_code(ec)}
   end
