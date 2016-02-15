@@ -87,9 +87,8 @@ defmodule Libbitcoin.Client do
   end
 
   def broadcast_transaction(client, tx, owner \\ self) do
-    cast(client, "protocol.broadcast_transasction", tx, owner)
+    cast(client, "protocol.broadcast_transaction", tx, owner)
   end
-
 
   @divisor 1 <<< 63
   def spend_checksum(hash, index) do
