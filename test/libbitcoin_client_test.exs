@@ -80,8 +80,13 @@ defmodule BitcoinClientTest do
   end
 
   test "blockchain.fetch_stealth" do
-    assert {:ok, ref} = C.stealth(:bs, "11111111", 0)
-    assert_receive {:libbitcoin_client, _, ^ref, [%{ephemkey: _, address: _, tx_hash: _}|_]}, @timeout
+    ephemkey = Base.decode16!( "0269642b87b0898e1f079be72d194b86aca0b54eff41844ac28ec70c564db4991a", case: :lower)
+    address = Base.decode16!("d4b516796c8be0b529d0aa6317b9087598f2d709", case: :lower)
+    tx_hash = Base.decode16!( "f12551534a2a8ff97ed80ee4742beae2569b663ba319070742d0f4bf88b654c3", case: :lower)
+
+    assert {:ok, ref} = C.stealth(:bs, "11111111111111111", 0)
+    assert_receive({:libbitcoin_client, _, ^ref, [
+        %{ephemkey: ^ephemkey, address: ^address, tx_hash: ^tx_hash}|_]}, @timeout)
   end
 
   test "protocol.total_connections" do
