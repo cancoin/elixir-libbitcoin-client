@@ -232,13 +232,16 @@ defmodule Libbitcoin.Client do
     {:error, :unknown_reply}
   end
 
+  @ephemkey_compressed 02 # assuming this is always compressed
+
   defp decode_stealth(<<>>, acc), do: {:ok, Enum.reverse(acc)}
   defp decode_stealth(<<ephemkey :: binary-size(32),
                         address :: binary-size(20),
                         tx_hash :: binary-size(32),
                         rest :: binary>>, acc) do
-    row = %{ephemkey: ephemkey,
-            address: address,
+
+    row = %{ephemkey: <<@ephemkey_compressed, ephemkey :: binary>>,
+            address: reverse_hash(address),
             tx_hash: reverse_hash(tx_hash)}
     decode_stealth(rest, [row|acc])
   end
