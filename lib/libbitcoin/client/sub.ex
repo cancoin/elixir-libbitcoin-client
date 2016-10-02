@@ -76,9 +76,8 @@ defmodule Libbitcoin.Client.Sub do
     {:ok, state} = send_to_controller {:libbitcoin_client, :transaction, tx}, state
     {:noreply, state}
   end
-  def handle_info({sub, [block]}, %State{endpoint: :block, sub: sub} = state) do
-    IO.inspect block
-    {:ok, state} = send_to_controller {:libbitcoin_client, :block, block}, state
+  def handle_info({sub, [<<height :: unsigned-little-size(32)>>, header | txids] = block}, %State{endpoint: :block, sub: sub} = state) do
+    {:ok, state} = send_to_controller {:libbitcoin_client, :block, {height, header, txids}}, state
     {:noreply, state}
   end
   def handle_info({sub, [<<node_id :: little-integer-unsigned-size(32)>>,
