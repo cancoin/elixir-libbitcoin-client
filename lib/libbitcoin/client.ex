@@ -150,12 +150,15 @@ defmodule Libbitcoin.Client do
     request_id = new_request_id
     case GenServer.cast(client, {:command, request_id, command, argv, owner}) do
       :ok -> {:ok, request_id}
-      other -> other
+      reply -> reply
     end
   end
 
   defp send_command(request_id, command, payload, state) do
-    send_payload(request_id, command, payload, state)
+    case send_payload(request_id, command, payload, state) do
+      :error -> {:error, :request_error, state)
+      reply -> reply
+    end
   end
 
   defp decode_command(_command, <<3 :: little-integer-unsigned-size(32), _rest :: binary>>) do
