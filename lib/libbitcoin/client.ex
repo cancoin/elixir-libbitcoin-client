@@ -156,7 +156,7 @@ defmodule Libbitcoin.Client do
 
   defp send_command(request_id, command, payload, state) do
     case send_payload(request_id, command, payload, state) do
-      :error -> {:error, :request_error, state)
+      :error -> {:error, :request_error, state}
       reply -> reply
     end
   end
