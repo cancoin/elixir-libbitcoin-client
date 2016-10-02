@@ -88,13 +88,28 @@ dropped when a (soon to be) configurable maximum length is reached.
 
 #### Examples
 
+#### Subscribe to transactions
+
 ```elixir
 alias Libbitcoin.Client.Sub
-{:ok, client} = Sub.transaction("tcp://bs1.cancoin.co:9094")
+{:ok, client} = Sub.transaction("tcp://voyager-api.cancoin.co:9094")
 :ok = Sub.controlling_process(client)
 receive do
   {:libbitcoin_client, :transaction, transaction} ->
     IO.puts "New transaction: #{Base.encode16(transaction)}"
+    Sub.ack_message(client)
+end
+```
+
+#### Subscribe to Blocks
+
+```elixir
+alias Libbitcoin.Client.Sub
+{:ok, client} = Sub.block("tcp://voyager-api.cancoin.co:9093")
+:ok = Sub.controlling_process(client)
+receive do
+  {:libbitcoin_client, :block, {height, header, txids}} ->
+    IO.puts "New block at #{height}"
     Sub.ack_message(client)
 end
 ````
@@ -119,7 +134,7 @@ defmodule TxSub do
   end
 end
 
-GenServer.start_link(TxSub, ["tcp://bs1.cancoin.co:9094"])
+GenServer.start_link(TxSub, ["tcp://voyager-api.cancoin.co:9094"])
 ```
 
 
