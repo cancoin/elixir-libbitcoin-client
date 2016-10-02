@@ -131,6 +131,7 @@ defmodule Libbitcoin.Client do
   def handle_info(:receive_payload, state) do
     case receive_payload(state) do
       {:ok, state} -> {:noreply, state}
+      {:error, :not_found} -> {:noreply, state}
     end
   end
 
@@ -345,7 +346,7 @@ defmodule Libbitcoin.Client do
     send(owner, {:libbitcoin_client_error, command, request_id, reason})
   end
 
-  defp new_request_id, do: :erlang.unique_integer([:positive])
+  defp new_request_id, do: :crypto.rand_uniform(0, 0xFFFFFFFE)
 
   defp encode_int(int), do: <<int :: little-integer-unsigned-size(32)>>
 
