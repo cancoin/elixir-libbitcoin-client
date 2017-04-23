@@ -78,6 +78,13 @@ defmodule Libbitcoin.Client do
         encode_int(height) :: binary>>, owner)
   end
 
+  def blockchain_history3(client, address, height \\ 0,  owner \\ self) do
+    {prefix, decoded} = decode_base58check(address)
+    cast(client, "blockchain.fetch_history3",
+      <<decoded :: binary-size(20),
+        encode_int(height) :: binary>>, owner)
+  end
+
   def total_connections(client, owner \\ self) do
     cast(client, "protocol.total_connections", "", owner)
   end
@@ -214,6 +221,10 @@ defmodule Libbitcoin.Client do
   end
   defp decode_command(command, <<@success :: little-integer-size(32), history :: binary>>)
    when command in ["blockchain.fetch_history", "address.fetch_history2"] do
+    decode_history2(history, [])
+  end
+  defp decode_command("blockchain.fetch_history3",
+    <<@success :: little-integer-size(32), history :: binary>>) do
     decode_history2(history, [])
   end
   defp decode_command("transaction_pool.validate",
