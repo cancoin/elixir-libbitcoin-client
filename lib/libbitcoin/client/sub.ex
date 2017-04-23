@@ -68,28 +68,16 @@ defmodule Libbitcoin.Client.Sub do
     {:noreply, state}
   end
 
-  def handle_info({sub, [<<heart :: little-unsigned-integer-size(32) >>]}, %State{endpoint: :heartbeat, sub: sub} = state) do
-    {:ok, state} = send_to_controller {:libbitcoin_client, :heartbeat, heart}, state
+  def handle_info({sub, [<<sequence :: unsigned-little-size(16)>>, <<_height :: little-unsigned-integer-size(64) >>]}, %State{endpoint: :heartbeat, sub: sub} = state) do
+    {:ok, state} = send_to_controller {:libbitcoin_client, :heartbeat, sequence}, state
     {:noreply, state}
   end
-  def handle_info({sub, [tx]}, %State{endpoint: :transaction, sub: sub} = state) do
+  def handle_info({sub, [<<_sequence :: unsigned-little-size(16)>>, tx]}, %State{endpoint: :transaction, sub: sub} = state) do
     {:ok, state} = send_to_controller {:libbitcoin_client, :transaction, tx}, state
     {:noreply, state}
   end
-  def handle_info({sub, [<<height :: unsigned-little-size(32)>>, header | txids] = block}, %State{endpoint: :block, sub: sub} = state) do
+  def handle_info({sub, [<<_sequence :: unsigned-little-size(16)>>, <<height :: unsigned-little-size(32)>>, header | txids] = block}, %State{endpoint: :block, sub: sub} = state) do
     {:ok, state} = send_to_controller {:libbitcoin_client, :block, {height, header, txids}}, state
-    {:noreply, state}
-  end
-  def handle_info({sub, [<<node_id :: little-integer-unsigned-size(32)>>,
-    <<1 ::  little-integer-unsigned-size(32)>>, <<hash :: binary-size(32)>>]},
-    %State{endpoint: :radar, sub: sub} = state) do
-    {:ok, state} = send_to_controller {:libbitcoin_client, :transaction_radar, node_id, String.reverse(hash)}, state
-    {:noreply, state}
-  end
-  def handle_info({sub, [<<node_id :: little-integer-unsigned-size(32)>>,
-    <<2 ::  little-integer-unsigned-size(32)>>, <<hash :: binary>>]},
-    %State{endpoint: :radar, sub: sub} = state) do
-    {:ok, state} = send_to_controller {:libbitcoin_client, :block_radar, node_id, String.reverse(hash)}, state
     {:noreply, state}
   end
   def handle_info({:resubscribe, prefix}, %State{socket: socket} = state) do
