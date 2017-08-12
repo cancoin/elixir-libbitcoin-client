@@ -79,6 +79,12 @@ defmodule BitcoinClientTest do
     assert_receive {:libbitcoin_client, "blockchain.fetch_history", ^ref, [row|_]} when is_map(row), @timeout
   end
 
+  @tag v3: true
+  test "blockchain.fetch_history3" do
+    assert {:ok, ref} = C.blockchain_history3(:bs, "myYdD65ERzsmBxfJgjgcBBTXtyS5jM4Xex", 0)
+    assert_receive {:libbitcoin_client, "blockchain.fetch_history3", ^ref, [row|_]} when is_map(row), @timeout
+  end
+
   test "blockchain.fetch_stealth" do
     ephemkey = Base.decode16!( "0269642b87b0898e1f079be72d194b86aca0b54eff41844ac28ec70c564db4991a", case: :lower)
     address = Base.decode16!("d4b516796c8be0b529d0aa6317b9087598f2d709", case: :lower)
